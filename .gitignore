@@ -169,6 +169,9 @@ kubeconfig
 .gcloudignore
 .gcloud
 .gcp
+# Google Cloud Service Account Keys
+*-key.json
+terraform-key.json
 
 # Model artifacts
 *.pkl

@@ -1,94 +1,117 @@
-# DeepSeek R1 Deployment
+# DeepSeek R1 - AI Model Deployment Platform
 
-## Quick Commands & Tips
+## Overview
+This project provides a complete infrastructure for deploying and serving AI models on Google Cloud Platform, with a focus on the DeepSeek model. It includes automated CI/CD pipelines, monitoring, logging, and performance optimization features.
 
-### Authenticate locally (gcloud):
+## Features
+- Automated infrastructure provisioning with Terraform
+- Kubernetes-based model deployment on GKE
+- CI/CD pipeline with GitHub Actions
+- Comprehensive monitoring and alerting
+- Centralized logging with export to BigQuery, Cloud Storage, and Pub/Sub
+- Performance optimization through batching and concurrency tuning
+- Secure service account management
+
+## Prerequisites
+- Google Cloud Platform account with billing enabled
+- Google Cloud SDK installed and configured
+- kubectl CLI
+- Terraform
+- Docker
+- Python 3.8+
+
+## Setup Instructions
+
+### 1. Google Cloud Setup
+1. Create a Google Cloud Project
+2. Enable required APIs:
+   ```
+   gcloud services enable \
+     compute.googleapis.com \
+     container.googleapis.com \
+     artifactregistry.googleapis.com \
+     monitoring.googleapis.com \
+     logging.googleapis.com \
+     bigquery.googleapis.com \
+     pubsub.googleapis.com \
+     storage.googleapis.com
+   ```
+
+### 2. Service Account Setup
+1. Create a service account for Terraform:
+   ```bash
+   gcloud iam service-accounts create terraform-sa \
+     --display-name="Terraform Service Account"
+   ```
+
+2. Grant necessary roles:
+   ```bash
+   export PROJECT_ID="your-project-id"
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+     --member="serviceAccount:terraform-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/owner"
+   ```
+
+3. Create and download the service account key:
+   ```bash
+   gcloud iam service-accounts keys create infra/terraform-key.json \
+     --iam-account="terraform-sa@$PROJECT_ID.iam.gserviceaccount.com"
+   ```
+
+### 3. Infrastructure Deployment
+1. Initialize Terraform:
+   ```bash
+   cd infra
+   terraform init
+   ```
+
+2. Apply the infrastructure:
+   ```bash
+   terraform apply
+   ```
+
+### 4. Monitoring and Logging Setup
+Run the monitoring setup script:
 ```bash
-gcloud auth login
-gcloud config set project YOUR_PROJECT
-gcloud services enable container.googleapis.com artifactregistry.googleapis.com compute.googleapis.com
+$env:PROJECT_ID="your-project-id"
+$env:REGION="us-central1"
+./setup-monitoring.ps1
 ```
 
-### Apply Terraform:
-```bash
-cd infra
-terraform init
-terraform plan -var="project_id=YOUR_PROJECT" -var="region=us-central1" -var="zone=us-central1-a"
-terraform apply -var="project_id=YOUR_PROJECT" -auto-approve
-```
+### 5. CI/CD Pipeline
+The GitHub Actions workflow will automatically:
+- Build and push Docker images
+- Deploy to GKE
+- Set up monitoring dashboards
+- Configure alerting policies
 
-### Create GPU node pool if not created or scale it:
-```bash
-gcloud container node-pools create gpu-pool \
-  --cluster deepseek-gke \
-  --zone us-central1-a \
-  --num-nodes 1 \
-  --machine-type n1-highmem-16 \
-  --accelerator type=nvidia-tesla-a100,count=1 \
-  --enable-autoscaling --min-nodes=0 --max-nodes=5
-```
+## Performance Optimization
+The project includes several performance optimization features:
+- Dynamic batching with configurable batch sizes and timeouts
+- Concurrency tuning with multiple batch workers
+- Container-level optimizations for better resource utilization
+- Kubernetes HPA configuration for automatic scaling
 
-### Apply k8s manifests:
-```bash
-kubectl apply -f k8s/service-account.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/hpa.yaml
-```
+## Monitoring and Alerting
+- Cloud Monitoring dashboards for infrastructure and model performance
+- Custom alert policies for errors, latency, and resource utilization
+- Centralized logging with export to multiple destinations
+- Custom metrics derived from application logs
 
-### Set up Workload Identity binding:
-After deploying the infrastructure and Kubernetes manifests, run the Workload Identity setup script:
+## Security Considerations
+- Service account keys are excluded from version control
+- Role-based access control for different components
+- Secure workload identity for GKE pods
 
-On Linux/Mac:
-```bash
-./setup-workload-identity.sh
-```
+## Troubleshooting
+Common issues and solutions:
+1. If you encounter permission errors, verify your service account has the necessary roles
+2. If monitoring resources fail to create, ensure the required APIs are enabled
+3. If deployments fail, check the logs in Cloud Logging
 
-On Windows:
-```powershell
-./setup-workload-identity.ps1
-```
-
-Make sure to update the script variables with your actual project ID before running.
-
-## Local Deployment
-
-If you don't have access to a GCP project with billing enabled, you can run the application locally:
-
-On Linux/Mac:
-```bash
-./local-deployment.sh
-```
-
-On Windows:
-```powershell
-./local-deployment.ps1
-```
-
-This will build and run the application locally using Docker.
-
-## Secrets for GitHub Repo
-
-Create these secrets in your GitHub repository:
-
-- `GCP_PROJECT` = your GCP project id
-- `GCP_REGION` = e.g. us-central1
-- `GKE_CLUSTER` = cluster name
-- `WIF_PROVIDER` = Workload Identity Provider ID (e.g., projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID)
-- `WIF_SERVICE_ACCOUNT` = Service account email for Workload Identity Federation
-- Optionally `ARTIFACT_REPO` if you want to parameterize
-
-## Security Note
-
-This workflow now uses Workload Identity Federation (WIF) with short-lived tokens instead of long-lived service account keys, providing enhanced security.
-
-## DevOps Best-Practice Checklist
-
-- **IaC**: Terraform + remote state + review CI plan on PRs
-- **CI**: Build, unit test, vulnerability scan (Trivy) and push images to Artifact Registry
-- **CD**: Rolling/canary deployments; keep rollback image tag strategy
-- **Secrets**: Secret Manager + Workload Identity Federation (avoid JSON keys entirely)
-- **Observability**: Export /metrics (Prometheus) and logs to Cloud Logging. Set alerts for P95 latency, GPU memory OOMs
-- **Security**: Binary Authorization or image vulnerability scanning, least-privilege IAM
-- **Cost**: Use preemptible GPUs for batch workloads; scale-to-zero for low-traffic endpoints
-- **Quotas**: Request GPU quotas early for your chosen region
+## Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
