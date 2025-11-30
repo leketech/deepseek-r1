@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepseek-inference
+  labels:
+    app: deepseek
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: deepseek
+  template:
+    metadata:
+      labels:
+        app: deepseek
+    spec:
+      serviceAccountName: deepseek-ci-ksa
+      # Node selector - only schedule on GPU node pool
+      nodeSelector:
+        cloud.google.com/gke-accelerator: "nvidia-tesla-a100" # match the GPU type label
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: server
+          image: us-docker.pkg.dev/YOUR_PROJECT/YOUR_REPO/deepseek-r1:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: "48Gi"
+              cpu: "8"
+            requests:
+              memory: "32Gi"
+              cpu: "6"
+          # Mount logging configuration
+          volumeMounts:
+            - name: logging-config
+              mountPath: /app/config
+              readOnly: true
+          env:
+            - name: LOGGING_CONFIG_PATH
+              value: "/app/config/logging-config.yaml"
+            # Performance tuning environment variables
+            - name: BATCH_SIZE
+              value: "64"
+            - name: BATCH_TIMEOUT
+              value: "0.005"  # 5ms
+            - name: MAX_CONCURRENT_BATCHES
+              value: "8"
+            - name: UVICORN_WORKERS
+              value: "4"
+            - name: UVICORN_BACKLOG
+              value: "4096"
+            - name: UVICORN_LIMIT_CONCURRENCY
+              value: "2000"
+          # Performance optimizations
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+          # Resource tuning
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          # Startup probe for slow model loading
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+      volumes:
+        - name: logging-config
+          configMap:
+            name: deepseek-logging-config

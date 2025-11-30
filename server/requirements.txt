@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+aiohttp
+numpy
+google-cloud-logging
+python-json-logger
+# Performance optimization libraries
+asyncio-metrics>=0.1.0
+# add torch/transformers or triton client as needed; pin GPU versions when using GPU images

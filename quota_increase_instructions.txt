@@ -1,0 +1,31 @@
+Google Cloud SSD Quota Increase Request Instructions
+==================================================
+
+1. Open your web browser and go to the Google Cloud Console:
+   https://console.cloud.google.com/
+
+2. Navigate to IAM & Admin > Quotas:
+   https://console.cloud.google.com/iam-admin/quotas
+
+3. In the filters section, set the following:
+   - Metric: SSD_TOTAL_GB
+   - Service: Compute Engine API
+   - Region: us-west1 (or whatever region you're using)
+
+4. Select the "SSD_TOTAL_GB" quota from the list
+
+5. Click the "Edit Quotas" button at the top of the page
+
+6. In the quota increase request form:
+   - Set the new quota limit to 500 GB (or higher if needed)
+   - Provide a brief justification for the increase, such as:
+     "Requesting increased SSD quota for GKE cluster deployment for DeepSeek R1 project. Current 250GB limit is insufficient for cluster creation."
+
+7. Submit the request
+
+8. Wait for approval (usually takes minutes to a few hours)
+
+9. Once approved, return to your terminal and run:
+   $env:GOOGLE_APPLICATION_CREDENTIALS = "terraform-key.json"; terraform apply -auto-approve
+
+This should resolve the quota issue and allow your GKE cluster to be created successfully.

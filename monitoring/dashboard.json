@@ -1,0 +1,176 @@
+{
+  "displayName": "DeepSeek Model Monitoring Dashboard",
+  "gridLayout": {
+    "columns": "2",
+    "widgets": [
+      {
+        "title": "CPU Utilization",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/cpu/utilization\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\""
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "CPU Utilization"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "CPU Utilization",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Memory Utilization",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/memory/utilization\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\""
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Memory Utilization"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Memory Utilization",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Request Latency (95th Percentile)",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/uptime\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_PERCENTILE_95"
+                  }
+                },
+                "unitOverride": "s"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Latency (95th Percentile)"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Latency (seconds)",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Request Rate",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/cpu/core_usage_time\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE"
+                  }
+                },
+                "unitOverride": "1/s"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Requests per Second"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Requests per Second",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Error Rate",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/model-inference-errors\""
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Error Rate"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Errors",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Replica Count",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/deployment/desired_replicas\" resource.type=\"k8s_deployment\" resource.label.\"deployment_name\"=\"deepseek-inference\""
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Desired Replicas"
+            },
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/deployment/available_replicas\" resource.type=\"k8s_deployment\" resource.label.\"deployment_name\"=\"deepseek-inference\""
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Available Replicas"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Replica Count",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      }
+    ]
+  }
+}

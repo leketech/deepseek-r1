@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deepseek-logging-config
+  labels:
+    app: deepseek
+data:
+  logging-config.yaml: |
+    # Cloud Logging Configuration for DeepSeek Model
+    logging:
+      level: INFO
+      formatters:
+        json:
+          class: pythonjsonlogger.JsonFormatter
+          format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+      handlers:
+        console:
+          class: logging.StreamHandler
+          level: INFO
+          formatter: json
+          stream: ext://sys.stdout
+        google_cloud:
+          class: google.cloud.logging.handlers.CloudLoggingHandler
+          level: INFO
+          formatter: json
+          name: deepseek-model
+      root:
+        level: INFO
+        handlers: [console, google_cloud]
+      loggers:
+        app:
+          level: INFO
+          handlers: [console, google_cloud]
+          propagate: false
+        inference:
+          level: INFO
+          handlers: [console, google_cloud]
+          propagate: false
+        error:
+          level: ERROR
+          handlers: [console, google_cloud]
+          propagate: false
+    structured_fields:
+      - timestamp
+      - service
+      - version
+      - component
+      - severity
+      - message
+      - latency_ms
+      - input_length
+      - batch_size
+      - error_type
+    retention_days: 30

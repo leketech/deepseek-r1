@@ -1,0 +1,38 @@
+{
+  "displayName": "High Error Rate Alert",
+  "userLabels": {},
+  "conditions": [
+    {
+      "displayName": "High error rate",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/model-inference-errors\" resource.type=\"k8s_container\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 5,
+        "duration": "60s",
+        "trigger": {
+          "count": 1
+        },
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_RATE"
+          }
+        ]
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "604800s"
+  },
+  "mutationRecord": {
+    "mutateTime": "1970-01-01T00:00:00Z",
+    "mutatedBy": "user"
+  },
+  "creationRecord": {
+    "mutateTime": "1970-01-01T00:00:00Z",
+    "mutatedBy": "user"
+  }
+}

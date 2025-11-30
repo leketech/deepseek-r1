@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-test
+  labels:
+    app: simple-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-test
+  template:
+    metadata:
+      labels:
+        app: simple-test
+    spec:
+      containers:
+      - name: simple-test
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "32Mi"
+            cpu: "20m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-test-service
+spec:
+  selector:
+    app: simple-test
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer

@@ -1,0 +1,169 @@
+{
+  "displayName": "DeepSeek Model Performance Dashboard",
+  "gridLayout": {
+    "columns": "2",
+    "widgets": [
+      {
+        "title": "Model Inference Latency",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/model-inference-latency\""
+                },
+                "unitOverride": "ms"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Latency (ms)"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Latency (milliseconds)",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Inference Throughput",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/model-inference-count\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE"
+                  }
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Inferences per Second"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Inferences per Second",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Model Error Rate",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/model-inference-errors\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE"
+                  }
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Errors per Second"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Errors per Second",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Batch Size Distribution",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/model-batch-size\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MEAN"
+                  }
+                },
+                "unitOverride": "1"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Average Batch Size"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Batch Size",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "GPU Utilization",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/accelerator/duty_cycle\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\""
+                },
+                "unitOverride": "%"
+              },
+              "plotType": "LINE",
+              "legendTemplate": "GPU Utilization %"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "GPU Utilization (%)",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      },
+      {
+        "title": "Model Version Deployed",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/deployment/spec/image\" resource.type=\"k8s_deployment\" resource.label.\"deployment_name\"=\"deepseek-inference\""
+                }
+              },
+              "plotType": "LINE",
+              "legendTemplate": "Image Version"
+            }
+          ],
+          "timeshiftDuration": "0s",
+          "yAxis": {
+            "label": "Image Version",
+            "scale": "LINEAR"
+          },
+          "chartOptions": {
+            "mode": "COLOR"
+          }
+        }
+      }
+    ]
+  }
+}

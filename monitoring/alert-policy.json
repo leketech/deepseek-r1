@@ -1,0 +1,50 @@
+{
+  "displayName": "General Model Health Alert",
+  "userLabels": {},
+  "conditions": [
+    {
+      "displayName": "Low available replicas",
+      "conditionThreshold": {
+        "filter": "metric.type=\"kubernetes.io/deployment/available_replicas\" resource.type=\"k8s_deployment\" resource.label.\"deployment_name\"=\"deepseek-inference\"",
+        "comparison": "COMPARISON_LT",
+        "thresholdValue": 1,
+        "duration": "120s",
+        "trigger": {
+          "count": 1
+        }
+      }
+    },
+    {
+      "displayName": "High CPU utilization",
+      "conditionThreshold": {
+        "filter": "metric.type=\"kubernetes.io/container/cpu/utilization\" resource.type=\"k8s_container\" resource.label.\"container_name\"=\"server\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0.8,
+        "duration": "60s",
+        "trigger": {
+          "count": 1
+        },
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_MEAN"
+          }
+        ]
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "604800s"
+  },
+  "mutationRecord": {
+    "mutateTime": "1970-01-01T00:00:00Z",
+    "mutatedBy": "user"
+  },
+  "creationRecord": {
+    "mutateTime": "1970-01-01T00:00:00Z",
+    "mutatedBy": "user"
+  }
+}

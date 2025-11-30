@@ -1,0 +1,97 @@
+# Cloud Logging Configuration for DeepSeek Model
+# This configuration sets up structured logging for better observability
+
+logging:
+  # Global logging level
+  level: INFO
+  
+  # Log format - structured JSON for better parsing
+  formatters:
+    json:
+      class: pythonjsonlogger.JsonFormatter
+      format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+  
+  # Handlers for different log destinations
+  handlers:
+    # Console handler for local development
+    console:
+      class: logging.StreamHandler
+      level: INFO
+      formatter: json
+      stream: ext://sys.stdout
+    
+    # File handler for local logging
+    file:
+      class: logging.FileHandler
+      level: INFO
+      formatter: json
+      filename: /var/log/deepseek/model.log
+    
+    # Google Cloud Logging handler
+    google_cloud:
+      class: google.cloud.logging.handlers.CloudLoggingHandler
+      level: INFO
+      formatter: json
+      name: deepseek-model
+  
+  # Root logger configuration
+  root:
+    level: INFO
+    handlers: [console, file, google_cloud]
+  
+  # Specific loggers for different components
+  loggers:
+    # Application logger
+    app:
+      level: INFO
+      handlers: [console, file, google_cloud]
+      propagate: false
+    
+    # Model inference logger
+    inference:
+      level: INFO
+      handlers: [console, file, google_cloud]
+      propagate: false
+    
+    # Error logger
+    error:
+      level: ERROR
+      handlers: [console, file, google_cloud]
+      propagate: false
+
+# Structured logging fields
+structured_fields:
+  - timestamp
+  - service
+  - version
+  - component
+  - trace_id
+  - span_id
+  - severity
+  - message
+  - latency_ms
+  - input_length
+  - batch_size
+  - error_type
+
+# Log retention policy (in days)
+retention_days: 30
+
+# Export configuration for centralized logging
+export:
+  # Export to BigQuery for analysis
+  bigquery:
+    enabled: true
+    dataset: deepseek_logs
+    table: model_inference
+  
+  # Export to Cloud Storage for long-term archival
+  cloud_storage:
+    enabled: true
+    bucket: deepseek-logs-archive
+    prefix: model-inference/
+  
+  # Export to Pub/Sub for real-time processing
+  pubsub:
+    enabled: true
+    topic: deepseek-model-logs

@@ -1,0 +1,92 @@
+# Performance profiles for different deployment scenarios
+profiles:
+  # Development profile - low resource usage, minimal batching
+  development:
+    batch_size: 8
+    batch_timeout: 0.05  # 50ms
+    max_concurrent_batches: 2
+    uvicorn_workers: 1
+    uvicorn_backlog: 1024
+    uvicorn_limit_concurrency: 100
+    replicas: 1
+    cpu_requests: "1"
+    cpu_limits: "2"
+    memory_requests: "2Gi"
+    memory_limits: "4Gi"
+    hpa_min_replicas: 1
+    hpa_max_replicas: 3
+    hpa_cpu_target: 70
+
+  # Production profile - optimized for throughput
+  production:
+    batch_size: 64
+    batch_timeout: 0.005  # 5ms
+    max_concurrent_batches: 8
+    uvicorn_workers: 4
+    uvicorn_backlog: 4096
+    uvicorn_limit_concurrency: 2000
+    replicas: 2
+    cpu_requests: "6"
+    cpu_limits: "8"
+    memory_requests: "32Gi"
+    memory_limits: "48Gi"
+    hpa_min_replicas: 2
+    hpa_max_replicas: 20
+    hpa_cpu_target: 70
+    hpa_memory_target: 80
+
+  # High-throughput profile - maximum performance
+  high_throughput:
+    batch_size: 128
+    batch_timeout: 0.002  # 2ms
+    max_concurrent_batches: 16
+    uvicorn_workers: 8
+    uvicorn_backlog: 8192
+    uvicorn_limit_concurrency: 4000
+    replicas: 4
+    cpu_requests: "8"
+    cpu_limits: "16"
+    memory_requests: "48Gi"
+    memory_limits: "64Gi"
+    hpa_min_replicas: 4
+    hpa_max_replicas: 30
+    hpa_cpu_target: 75
+    hpa_memory_target: 85
+
+  # Cost-optimized profile - balance between performance and cost
+  cost_optimized:
+    batch_size: 32
+    batch_timeout: 0.01  # 10ms
+    max_concurrent_batches: 4
+    uvicorn_workers: 2
+    uvicorn_backlog: 2048
+    uvicorn_limit_concurrency: 1000
+    replicas: 1
+    cpu_requests: "2"
+    cpu_limits: "4"
+    memory_requests: "8Gi"
+    memory_limits: "16Gi"
+    hpa_min_replicas: 1
+    hpa_max_replicas: 10
+    hpa_cpu_target: 65
+    hpa_memory_target: 75
+
+# Default profile to use
+default_profile: production
+
+# Environment-specific overrides
+environments:
+  # Local development
+  local:
+    profile: development
+    server_url: "http://localhost:8080"
+  
+  # Staging environment
+  staging:
+    profile: cost_optimized
+    server_url: "https://staging-api.deepseek.example.com"
+  
+  # Production environment
+  production:
+    profile: production
+    server_url: "https://api.deepseek.example.com"

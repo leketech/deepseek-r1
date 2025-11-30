@@ -1,0 +1,135 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  IMAGE: us-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/deepseek-r1:${{ github.sha }}
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          export_default_credentials: true
+
+      - name: Configure Docker auth for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev -q
+        env:
+          REGION: ${{ secrets.GCP_REGION }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE ./server
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push $IMAGE
+
+  deploy-to-gke:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          export_default_credentials: true
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} --region ${{ secrets.GCP_REGION }}
+
+      - name: Apply k8s manifests
+        run: |
+          kubectl apply -f k8s/service-account.yaml
+          kubectl apply -f k8s/logging-configmap.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/hpa.yaml
+          kubectl set image deployment/deepseek-inference server=$IMAGE
+
+      # Add monitoring and logging setup
+      - name: Deploy Monitoring Dashboards
+        run: |
+          # Create Cloud Monitoring dashboards
+          gcloud monitoring dashboards create --config-from-file=monitoring/dashboard.json || echo "Dashboard may already exist"
+          
+          # Create alert policies
+          gcloud alpha monitoring policies create --policy-from-file=monitoring/alert-policy.json || echo "Alert policy may already exist"
+
+      - name: Configure Logging
+        run: |
+          # Set up log sinks for centralized logging
+          gcloud logging sinks create deepseek-logs \
+            bigquery.googleapis.com/projects/${{ secrets.GCP_PROJECT }}/datasets/deepseek_logs \
+            --log-filter="resource.type=gce_instance AND resource.labels.instance_id:*" || echo "Log sink may already exist"
+
+  # New job for monitoring and observability
+  setup-monitoring:
+    name: Setup Monitoring & Observability
+    runs-on: ubuntu-latest
+    needs: deploy-to-gke
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          export_default_credentials: true
+
+      - name: Create Monitoring Dashboard
+        run: |
+          # Create a custom dashboard for model monitoring
+          gcloud monitoring dashboards create --config-from-file=monitoring/model-dashboard.json || echo "Model dashboard may already exist"
+
+      - name: Setup Log-based Metrics
+        run: |
+          # Create log-based metrics for model inference
+          gcloud logging metrics create model-inference-latency \
+            --description="Latency metric for model inference" \
+            --log-filter="resource.type=k8s_container AND resource.labels.container_name=server AND jsonPayload.latency_ms:*" || echo "Metric may already exist"
+
+      - name: Create Alert Policies
+        run: |
+          # Create alerts for high latency or error rates
+          gcloud alpha monitoring policies create --policy-from-file=monitoring/error-alert.json || echo "Error alert may already exist"
+          gcloud alpha monitoring policies create --policy-from-file=monitoring/latency-alert.json || echo "Latency alert may already exist"
