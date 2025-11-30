@@ -21,7 +21,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Copy and install dependencies
-COPY pyproject.toml requirements.txt /app/
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -38,12 +38,5 @@ USER 1000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/healthz || exit 1
 
-# Run the application with optimized settings
-CMD ["uvicorn", "app:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8080", \
-     "--workers", "4", \
-     "--timeout-keep-alive", "60", \
-     "--backlog", "2048", \
-     "--limit-concurrency", "1000", \
-     "--timeout-graceful-shutdown", "120"]
+# Command to run the application
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
