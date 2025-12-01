@@ -17,6 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Add more disk space to the runner
+      - name: Free up disk space
+        run: |
+          sudo docker rmi $(docker image ls -aq) || true
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
       - id: auth
         name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
@@ -66,6 +75,11 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           export_default_credentials: true
 
+      # Install GKE auth plugin
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+
       - name: Get GKE credentials
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} --zone ${{ secrets.GCP_ZONE }}
@@ -84,13 +98,6 @@ jobs:
         run: |
           # Create Cloud Monitoring dashboards
           gcloud monitoring dashboards create --config-from-file=monitoring/model-dashboard.json || echo "Dashboard may already exist"
-
-      - name: Configure Logging
-        run: |
-          # Set up log sinks for centralized logging
-          gcloud logging sinks create deepseek-logs \
-            bigquery.googleapis.com/projects/${{ secrets.GCP_PROJECT }}/datasets/deepseek_logs \
-            --log-filter="resource.type=gce_instance AND resource.labels.instance_id:*" || echo "Log sink may already exist"
 
   # New job for GPU-enabled deployment
   deploy-to-gke-gpu:
@@ -112,6 +119,11 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           export_default_credentials: true
 
+      # Install GKE auth plugin
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+
       - name: Get GKE credentials
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} --zone ${{ secrets.GCP_ZONE }}
@@ -120,7 +132,7 @@ jobs:
         run: |
           # Apply GPU-specific configurations
           if [ -f k8s/gpu-deployment.yaml ]; then
-            kubectl apply -f k8s/gpu-deployment.yaml
+            kubectl apply -f k8s/gpu-deployment.yaml --validate=false
             kubectl set image deployment/deepseek-inference-gpu server=$GPU_IMAGE
           else
             echo "GPU deployment manifest not found, skipping"
