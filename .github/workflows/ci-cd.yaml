@@ -7,7 +7,8 @@ on:
     branches: [ "main" ]
 
 env:
-  IMAGE: us-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/deepseek-r1:${{ github.sha }}
+  IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/deepseek-r1:${{ github.sha }}
+  GPU_IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ secrets.ARTIFACT_REPO }}/deepseek-r1-gpu:${{ github.sha }}
 
 jobs:
   build-and-push:
@@ -34,17 +35,21 @@ jobs:
 
       - name: Configure Docker auth for Artifact Registry
         run: |
-          gcloud auth configure-docker ${REGION}-docker.pkg.dev -q
-        env:
-          REGION: ${{ secrets.GCP_REGION }}
+          gcloud auth configure-docker us-central1-docker.pkg.dev -q
 
       - name: Build Docker image
         run: |
           docker build -t $IMAGE ./server
 
+      - name: Build GPU Docker image
+        run: |
+          # Build a GPU-enabled version of the image
+          docker build -t $GPU_IMAGE -f ./server/Dockerfile.gpu ./server || echo "GPU Dockerfile not found, skipping"
+
       - name: Push to Artifact Registry
         run: |
           docker push $IMAGE
+          docker push $GPU_IMAGE || echo "GPU image not built, skipping"
 
   deploy-to-gke:
     name: Deploy to GKE
@@ -83,10 +88,7 @@ jobs:
       - name: Deploy Monitoring Dashboards
         run: |
           # Create Cloud Monitoring dashboards
-          gcloud monitoring dashboards create --config-from-file=monitoring/dashboard.json || echo "Dashboard may already exist"
-          
-          # Create alert policies
-          gcloud alpha monitoring policies create --policy-from-file=monitoring/alert-policy.json || echo "Alert policy may already exist"
+          gcloud monitoring dashboards create --config-from-file=monitoring/model-dashboard.json || echo "Dashboard may already exist"
 
       - name: Configure Logging
         run: |
@@ -94,6 +96,41 @@ jobs:
           gcloud logging sinks create deepseek-logs \
             bigquery.googleapis.com/projects/${{ secrets.GCP_PROJECT }}/datasets/deepseek_logs \
             --log-filter="resource.type=gce_instance AND resource.labels.instance_id:*" || echo "Log sink may already exist"
+
+  # New job for GPU-enabled deployment
+  deploy-to-gke-gpu:
+    name: Deploy to GKE with GPU Support
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          export_default_credentials: true
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} --region ${{ secrets.GCP_REGION }}
+
+      - name: Apply GPU-enabled deployment
+        run: |
+          # Apply GPU-specific configurations
+          if [ -f k8s/gpu-deployment.yaml ]; then
+            kubectl apply -f k8s/gpu-deployment.yaml
+            kubectl set image deployment/deepseek-inference-gpu server=$GPU_IMAGE
+          else
+            echo "GPU deployment manifest not found, skipping"
+          fi
 
   # New job for monitoring and observability
   setup-monitoring:

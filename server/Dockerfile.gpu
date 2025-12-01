@@ -1,10 +1,16 @@
-FROM python:3.11-slim
+FROM nvidia/cuda:11.8-devel-ubuntu20.04
 
-# Install minimal deps; if GPU image needed, use nvidia/cuda base instead.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+# Install Python and other dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Install pip
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
 # Set environment variables for performance optimization
 ENV PYTHONUNBUFFERED=1 \
@@ -25,6 +31,13 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# Install GPU-specific libraries
+RUN pip install --no-cache-dir \
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cu118
 
 # Copy application code
 COPY app.py /app/

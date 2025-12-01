@@ -5,6 +5,11 @@ aiohttp
 numpy
 google-cloud-logging
 python-json-logger
+google-cloud-aiplatform
 # Performance optimization libraries
-asyncio-metrics>=0.1.0
-# add torch/transformers or triton client as needed; pin GPU versions when using GPU images
+# asyncio-metrics>=0.1.0 (removed as it's not available)
+# GPU support libraries
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+# add transformers or triton client as needed; pin GPU versions when using GPU images

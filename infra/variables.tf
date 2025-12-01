@@ -26,3 +26,9 @@ variable "artifact_repo" {
   type = string 
   default = "deepseek-repo" 
 }
+
+variable "enable_gpu" {
+  type = bool
+  default = false
+  description = "Enable GPU node pool creation"
+}

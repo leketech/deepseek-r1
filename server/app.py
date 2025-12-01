@@ -39,66 +39,74 @@ batch_count = 0
 total_batch_processing_time = 0
 total_batches_processed = 0
 
-async def batch_worker():
+# Store batch workers
+batch_workers = []
+
+async def batch_worker(worker_id):
     global inference_count, error_count, batch_count, total_batch_processing_time, total_batches_processed
+    logger.info(f"Starting batch worker {worker_id}")
     while True:
-        await batch_event.wait()
-        # Acquire semaphore to limit concurrent batches
-        async with batch_semaphore:
-            # collect up to BATCH_SIZE items or until timeout
-            start_time = time.time()
-            await asyncio.sleep(BATCH_TIMEOUT)
-            items = []
-            while batch_queue and len(items) < BATCH_SIZE:
-                items.append(batch_queue.pop(0))
-            batch_event.clear()
+        try:
+            await batch_event.wait()
+            # Acquire semaphore to limit concurrent batches
+            async with batch_semaphore:
+                # collect up to BATCH_SIZE items or until timeout
+                start_time = time.time()
+                await asyncio.sleep(BATCH_TIMEOUT)
+                items = []
+                while batch_queue and len(items) < BATCH_SIZE:
+                    items.append(batch_queue.pop(0))
+                batch_event.clear()
 
-            if not items:
-                continue
+                if not items:
+                    continue
 
-            batch_count += 1
-            batch_size = len(items)
-            
-            # Log batch size for monitoring
-            logger.info(f"Processing batch #{batch_count} of size {batch_size}")
-
-            # Extract payloads
-            inputs = [it["payload"].input_text for it in items]
-            
-            # Process batch
-            batch_start = time.time()
-            try:
-                # Simulate actual model inference with optimized batching
-                # In a real implementation, this would be replaced with actual model inference
-                results = await process_batch_inference(inputs)
-                inference_count += len(inputs)
+                batch_count += 1
+                batch_size = len(items)
                 
-                batch_processing_time = (time.time() - batch_start) * 1000
-                total_batch_processing_time += batch_processing_time
-                total_batches_processed += 1
-                
-                # Log successful inferences
-                avg_latency_per_item = batch_processing_time / len(items) if len(items) > 0 else 0
-                logger.info({
-                    "event": "batch_processed",
-                    "batch_id": batch_count,
-                    "batch_size": batch_size,
-                    "processing_time_ms": batch_processing_time,
-                    "avg_latency_per_item_ms": avg_latency_per_item,
-                    "throughput_items_per_second": len(items) / (batch_processing_time / 1000) if batch_processing_time > 0 else 0
-                })
-                
-            except Exception as e:
-                error_count += len(inputs)
-                logger.error(f"Inference error in batch #{batch_count}: {str(e)}")
-                # Propagate error to all items in the batch
-                for it in items:
-                    it["future"].set_exception(e)
-                continue
+                # Log batch size for monitoring
+                logger.info(f"Processing batch #{batch_count} of size {batch_size} by worker {worker_id}")
 
-            # Set results for all items in the batch
-            for res, it in zip(results, items):
-                it["future"].set_result(res)
+                # Extract payloads
+                inputs = [it["payload"].input_text for it in items]
+                
+                # Process batch
+                batch_start = time.time()
+                try:
+                    # Simulate actual model inference with optimized batching
+                    # In a real implementation, this would be replaced with actual model inference
+                    results = await process_batch_inference(inputs)
+                    inference_count += len(inputs)
+                    
+                    batch_processing_time = (time.time() - batch_start) * 1000
+                    total_batch_processing_time += batch_processing_time
+                    total_batches_processed += 1
+                    
+                    # Log successful inferences
+                    avg_latency_per_item = batch_processing_time / len(items) if len(items) > 0 else 0
+                    logger.info({
+                        "event": "batch_processed",
+                        "batch_id": batch_count,
+                        "batch_size": batch_size,
+                        "processing_time_ms": batch_processing_time,
+                        "avg_latency_per_item_ms": avg_latency_per_item,
+                        "throughput_items_per_second": len(items) / (batch_processing_time / 1000) if batch_processing_time > 0 else 0
+                    })
+                    
+                except Exception as e:
+                    error_count += len(inputs)
+                    logger.error(f"Inference error in batch #{batch_count} by worker {worker_id}: {str(e)}")
+                    # Propagate error to all items in the batch
+                    for it in items:
+                        it["future"].set_exception(e)
+                    continue
+
+                # Set results for all items in the batch
+                for res, it in zip(results, items):
+                    it["future"].set_result(res)
+        except Exception as e:
+            logger.error(f"Error in batch worker {worker_id}: {str(e)}")
+            # Continue running even if there's an error
 
 async def process_batch_inference(inputs):
     """
@@ -113,13 +121,19 @@ async def process_batch_inference(inputs):
 @app.on_event("startup")
 async def startup():
     # Start multiple batch workers for better concurrency
+    global batch_workers
+    logger.info(f"Starting model server with {MAX_CONCURRENT_BATCHES} batch workers")
     for i in range(MAX_CONCURRENT_BATCHES):
-        asyncio.create_task(batch_worker())
+        worker = asyncio.create_task(batch_worker(i))
+        batch_workers.append(worker)
     logger.info(f"Model server started with {MAX_CONCURRENT_BATCHES} batch workers")
 
 @app.on_event("shutdown")
 async def shutdown():
     logger.info(f"Server shutting down. Total inferences: {inference_count}, Errors: {error_count}, Batches: {batch_count}")
+    # Cancel all batch workers
+    for worker in batch_workers:
+        worker.cancel()
 
 @app.get("/healthz")
 def health():

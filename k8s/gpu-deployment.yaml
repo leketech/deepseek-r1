@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepseek-inference-gpu
+  labels:
+    app: deepseek-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deepseek-gpu
+  template:
+    metadata:
+      labels:
+        app: deepseek-gpu
+    spec:
+      containers:
+        - name: server
+          image: us-central1-docker.pkg.dev/golden-capsule-479805-q9/deepseek-repo/deepseek-r1-gpu:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits:
+              memory: "8Gi"
+              cpu: "2000m"
+              nvidia.com/gpu: 1
+            requests:
+              memory: "4Gi"
+              cpu: "1000m"
+              nvidia.com/gpu: 1
+          env:
+            - name: LOGGING_CONFIG_PATH
+              value: "/app/config/logging-config.yaml"
+            # Performance tuning environment variables for GPU workloads
+            - name: BATCH_SIZE
+              value: "64"
+            - name: BATCH_TIMEOUT
+              value: "0.005"  # 5ms for faster processing
+            - name: MAX_CONCURRENT_BATCHES
+              value: "8"
+            - name: UVICORN_WORKERS
+              value: "2"  # Reduced for GPU workloads
+            - name: UVICORN_BACKLOG
+              value: "4096"
+            - name: UVICORN_LIMIT_CONCURRENCY
+              value: "2000"
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+      # Node selector to ensure deployment on GPU nodes
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-t4
+      # Tolerations to allow scheduling on tainted GPU nodes
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

@@ -25,3 +25,16 @@ resource "google_project_iam_member" "ci_gke_admin" {
   role    = "roles/container.developer"
   member  = "serviceAccount:${google_service_account.ci.email}"
 }
+
+# Additional roles for Vertex AI and GPU workloads
+resource "google_project_iam_member" "ci_vertex_ai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.ci.email}"
+}
+
+resource "google_project_iam_member" "ci_gpu_admin" {
+  project = var.project_id
+  role    = "roles/compute.admin"
+  member  = "serviceAccount:${google_service_account.ci.email}"
+}

@@ -11,6 +11,8 @@ This project provides a complete infrastructure for deploying and serving AI mod
 - Centralized logging with export to BigQuery, Cloud Storage, and Pub/Sub
 - Performance optimization through batching and concurrency tuning
 - Secure service account management
+- GPU support for accelerated inference
+- Vertex AI integration for managed model serving
 
 ## Prerequisites
 - Google Cloud Platform account with billing enabled
@@ -34,7 +36,8 @@ This project provides a complete infrastructure for deploying and serving AI mod
      logging.googleapis.com \
      bigquery.googleapis.com \
      pubsub.googleapis.com \
-     storage.googleapis.com
+     storage.googleapis.com \
+     aiplatform.googleapis.com
    ```
 
 ### 2. Service Account Setup
@@ -59,6 +62,9 @@ This project provides a complete infrastructure for deploying and serving AI mod
    ```
 
 ### 3. Infrastructure Deployment
+You can deploy the infrastructure using either the manual approach or the automated production deployment script.
+
+#### Manual Deployment
 1. Initialize Terraform:
    ```bash
    cd infra
@@ -70,6 +76,18 @@ This project provides a complete infrastructure for deploying and serving AI mod
    terraform apply
    ```
 
+#### Automated Production Deployment
+Run the production deployment script:
+```powershell
+# On Windows
+.\deploy-production.ps1
+```
+
+```bash
+# On Linux/Mac (using the Python script)
+python3 deploy_production.py
+```
+
 ### 4. Monitoring and Logging Setup
 Run the monitoring setup script:
 ```bash
@@ -80,10 +98,23 @@ $env:REGION="us-central1"
 
 ### 5. CI/CD Pipeline
 The GitHub Actions workflow will automatically:
-- Build and push Docker images
+- Build and push Docker images (both CPU and GPU versions)
 - Deploy to GKE
 - Set up monitoring dashboards
 - Configure alerting policies
+
+### 6. GPU Support
+The infrastructure includes:
+- Dedicated GPU node pools in GKE
+- GPU-optimized Docker images
+- Kubernetes deployments configured for GPU resources
+- Appropriate resource requests and limits
+
+### 7. Vertex AI Integration
+The project includes scripts for deploying models to Vertex AI:
+- Pre-trained models from Model Garden
+- Custom model deployment
+- Endpoint management
 
 ## Performance Optimization
 The project includes several performance optimization features:
@@ -91,6 +122,7 @@ The project includes several performance optimization features:
 - Concurrency tuning with multiple batch workers
 - Container-level optimizations for better resource utilization
 - Kubernetes HPA configuration for automatic scaling
+- GPU acceleration for compute-intensive workloads
 
 ## Monitoring and Alerting
 - Cloud Monitoring dashboards for infrastructure and model performance
@@ -102,12 +134,14 @@ The project includes several performance optimization features:
 - Service account keys are excluded from version control
 - Role-based access control for different components
 - Secure workload identity for GKE pods
+- Private networking for internal services
 
 ## Troubleshooting
 Common issues and solutions:
 1. If you encounter permission errors, verify your service account has the necessary roles
 2. If monitoring resources fail to create, ensure the required APIs are enabled
 3. If deployments fail, check the logs in Cloud Logging
+4. For GPU-related issues, ensure the GPU node pool is properly configured
 
 ## Contributing
 1. Fork the repository
